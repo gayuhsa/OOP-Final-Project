@@ -89,6 +89,7 @@ public class MarketplaceGUI extends JFrame {
         // --- Panel List (Tengah) ---
         // Menggunakan JSplitPane agar ukuran list bisa diatur
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        splitPane.setEnabled(false);
         splitPane.setResizeWeight(0.5); // Bagi layar 50/50
 
         JPanel leftPanel = new JPanel(new GridBagLayout());
@@ -113,12 +114,21 @@ public class MarketplaceGUI extends JFrame {
         jlistFreelancers = new JList<>(freelancerListModel);
         jlistFreelancers.setCellRenderer(new FreelancerRenderer()); // Pakai renderer kustom
         JScrollPane freelancerScrollPane = new JScrollPane(jlistFreelancers);
+        
         // Tambahkan judul ke panel list
         freelancerScrollPane.setBorder(BorderFactory.createTitledBorder("Freelancer Tersedia"));
         leftPanel.add(freelancerScrollPane, gbcTop);
         
+        // Tombol pada splitPane untuk freelancer
+        JSplitPane buttonSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        buttonSplitPane.setEnabled(false);
+        buttonSplitPane.setResizeWeight(0.5);
+        leftPanel.add(buttonSplitPane, gbcOther);
+        
         JButton btnDeleteFreelancer = new JButton("Hapus");
-        leftPanel.add(btnDeleteFreelancer, gbcOther);
+        JButton btnUpdateFreelancer = new JButton("Update");
+        buttonSplitPane.setLeftComponent(btnDeleteFreelancer);
+        buttonSplitPane.setRightComponent(btnUpdateFreelancer);
         
         // Inisialisasi model dan list untuk Project
         projectListModel = new DefaultListModel<>();
@@ -128,8 +138,16 @@ public class MarketplaceGUI extends JFrame {
         projectScrollPane.setBorder(BorderFactory.createTitledBorder("Proyek Terbuka"));
         rightPanel.add(projectScrollPane, gbcTop);
         
+        // Tombol pada splitPane untuk project
+        JSplitPane buttonSplitPaneProject = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        buttonSplitPaneProject.setEnabled(false);
+        buttonSplitPaneProject.setResizeWeight(0.5);
+        rightPanel.add(buttonSplitPaneProject, gbcOther);
+        
         JButton btnDeleteProject = new JButton("Hapus");
-        rightPanel.add(btnDeleteProject, gbcOther);
+        JButton btnUpdateProject = new JButton("Update");
+        buttonSplitPaneProject.setLeftComponent(btnDeleteProject);
+        buttonSplitPaneProject.setRightComponent(btnUpdateProject);
         
         // Masukkan kedua list ke split pane
         splitPane.setLeftComponent(leftPanel);
@@ -143,12 +161,19 @@ public class MarketplaceGUI extends JFrame {
         // --- Logika Tombol (Controller) ---
         // Aksi untuk tombol "Registrasi Freelancer"
         btnRegisterFreelancer.addActionListener((ActionEvent e) -> {
-            showRegisterFreelancerDialog();
+            showRegisterFreelancerDialog("Add");
         });
 
-        // Aksi untuk tombol "Buat Proyek"
         btnPostProject.addActionListener((ActionEvent e) -> {
-            showPostProjectDialog();
+            showPostProjectDialog("Add");
+        });
+        
+        btnUpdateFreelancer.addActionListener((ActionEvent e) -> {
+            showRegisterFreelancerDialog("Update");
+        });
+
+        btnUpdateProject.addActionListener((ActionEvent e) -> {
+            showPostProjectDialog("Update");
         });
         
         btnDeleteFreelancer.addActionListener((ActionEvent e) -> {
@@ -172,7 +197,7 @@ public class MarketplaceGUI extends JFrame {
                 splitPane.setDividerLocation(0.5);
                 btnFreelancerVisibility.setText("Sembunyikan Freelancer");
             } else {
-                splitPane.setDividerLocation(1.0);
+                splitPane.setDividerLocation(0);
                 btnFreelancerVisibility.setText("Tampilkan Freelancer");
             }
             
@@ -188,7 +213,7 @@ public class MarketplaceGUI extends JFrame {
                 btnProjectVisibility.setText("Sembunyikan Proyek");
             } else {
                 splitPane.setDividerLocation(1.0);
-                btnProjectVisibility.setText("Sembunyikan Proyek");
+                btnProjectVisibility.setText("Tampilkan Proyek");
             }
             
             splitPane.revalidate();
@@ -199,7 +224,7 @@ public class MarketplaceGUI extends JFrame {
     /**
      * Menampilkan dialog untuk mendaftarkan freelancer baru.
      */
-    private void showRegisterFreelancerDialog() {
+    private void showRegisterFreelancerDialog(String type) {
         // Buat panel kustom untuk dialog
         JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
         JTextField nameField = new JTextField();
@@ -211,13 +236,27 @@ public class MarketplaceGUI extends JFrame {
         panel.add(nameField);
         panel.add(new JLabel("Skill Utama:"));
         panel.add(skillField);
-        panel.add(new JLabel("Tarif per Jam ($):"));
+        panel.add(new JLabel("Tarif per Jam (Rp):"));
         panel.add(rateField);
         panel.add(new JLabel("Rating Awal:"));
         panel.add(ratingField);
+        
+        String dialogTitle = "";
+        
+        if (type == "Add") {
+            dialogTitle = "Registrasi Freelancer";
+        } else if (type == "Update") {
+            int index = jlistFreelancers.getSelectedIndex();
+            Freelancer currentFreelancer = freelancers.get(index);
+            nameField.setText(currentFreelancer.getName());
+            skillField.setText(currentFreelancer.getSkill());
+            rateField.setText(Double.toString(currentFreelancer.getRatePerHour()));
+            ratingField.setText(Double.toString(currentFreelancer.getRating()));
+            dialogTitle = "Update Freelancer";
+        }
 
         // Tampilkan dialog
-        int result = JOptionPane.showConfirmDialog(this, panel, "Registrasi Freelancer",
+        int result = JOptionPane.showConfirmDialog(this, panel, dialogTitle,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (result == JOptionPane.OK_OPTION) {
@@ -234,8 +273,14 @@ public class MarketplaceGUI extends JFrame {
                     return;
                 }
 
-                mongoDriver.insertFreelancer(new Freelancer(name, skill, rate, rating));
-
+                if (type == "Add") {
+                    mongoDriver.insertFreelancer(new Freelancer(name, skill, rate, rating));
+                } else if (type == "Update") {
+                    int index = jlistFreelancers.getSelectedIndex();
+                    Freelancer currentFreelancer = freelancers.get(index);
+                    mongoDriver.updateFreelancer(currentFreelancer, name, skill, rate, rating);
+                }
+                
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Tarif dan Rating harus angka!", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -245,7 +290,7 @@ public class MarketplaceGUI extends JFrame {
     /**
      * Menampilkan dialog untuk membuat proyek baru.
      */
-    private void showPostProjectDialog() {
+    private void showPostProjectDialog(String type) {
         // Buat panel kustom
         JPanel panel = new JPanel(new GridLayout(4, 2, 5, 5));
         JTextField titleField = new JTextField();
@@ -259,10 +304,24 @@ public class MarketplaceGUI extends JFrame {
         panel.add(companyField);
         panel.add(new JLabel("Deskripsi Singkat:"));
         panel.add(descField);
-        panel.add(new JLabel("Budget ($):"));
+        panel.add(new JLabel("Budget (Rp):"));
         panel.add(budgetField);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Buat Proyek Baru",
+        String dialogTitle = "";
+        
+        if (type == "Add") {
+            dialogTitle = "Buat Proyek Baru";
+        } else if (type == "Update") {
+            int index = jlistProjects.getSelectedIndex();
+            Project currentProject = projects.get(index);
+            titleField.setText(currentProject.getTitle());
+            companyField.setText(currentProject.getCompanyName());
+            descField.setText(currentProject.getDescription());
+            budgetField.setText(Double.toString(currentProject.getBudget()));
+            dialogTitle = "Update Proyek";
+        }
+        
+        int result = JOptionPane.showConfirmDialog(this, panel, dialogTitle,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
 
         if (result == JOptionPane.OK_OPTION) {
@@ -277,8 +336,14 @@ public class MarketplaceGUI extends JFrame {
                     return;
                 }
                 
-                mongoDriver.insertProject(new Project(title, desc, budget, company));
-
+                if (type == "Add") {
+                    mongoDriver.insertProject(new Project(title, desc, budget, company));
+                } else if (type == "Update") {
+                    int index = jlistProjects.getSelectedIndex();
+                    Project currentProject = projects.get(index);
+                    mongoDriver.updateProject(currentProject, title, company, desc, budget);
+                }
+                
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(this, "Budget harus angka!", "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -409,7 +474,7 @@ class FreelancerRenderer extends JPanel implements ListCellRenderer<Freelancer> 
         // Set data ke label
         lblName.setText(freelancer.getName());
         lblSkill.setText(freelancer.getSkill());
-        lblDetails.setText(String.format("$%.2f/jam | %.1f Bintang", 
+        lblDetails.setText(String.format("Rp%.2f/jam | %.1f Bintang", 
                                         freelancer.getRatePerHour(), freelancer.getRating()));
 
         // Atur warna background saat item dipilih
@@ -456,7 +521,7 @@ class ProjectRenderer extends JPanel implements ListCellRenderer<Project> {
         
         lblTitle.setText(project.getTitle());
         lblCompany.setText("oleh " + project.getCompanyName());
-        lblBudget.setText(String.format("Budget: $%.2f", project.getBudget()));
+        lblBudget.setText(String.format("Budget: Rp%.2f", project.getBudget()));
 
         if (isSelected) {
             setBackground(list.getSelectionBackground());

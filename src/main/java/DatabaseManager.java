@@ -5,9 +5,12 @@ import com.mongodb.ServerApi;
 import com.mongodb.ServerApiVersion;
 import com.mongodb.client.*;
 import com.mongodb.client.model.*;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
 public class DatabaseManager {
@@ -97,6 +100,32 @@ public class DatabaseManager {
                 .append("companyName", project.getCompanyName());
         
         projects.insertOne(doc);
+        gui.refreshProjects();
+    }
+    
+    public void updateFreelancer(Freelancer freelancer, String name, String skill, double rate, double rating) {
+        Bson filter = Filters.eq("_id", freelancer.getId());
+        Bson update = Updates.combine(
+                Updates.set("name", name),
+                Updates.set("skill", skill),
+                Updates.set("ratePerHour", rate),
+                Updates.set("rating", rating)
+        );
+        
+        freelancers.updateOne(filter, update);
+        gui.refreshFreelancers();
+    }
+    
+    public void updateProject(Project project, String title, String company, String desc, double budget) {
+        Bson filter = Filters.eq("_id", project.getId());
+        Bson update = Updates.combine(
+                Updates.set("title", title),
+                Updates.set("companyName", company),
+                Updates.set("description", desc),
+                Updates.set("budget", budget)
+        );
+        
+        projects.updateOne(filter, update);
         gui.refreshProjects();
     }
     
